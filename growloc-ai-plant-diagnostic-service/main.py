@@ -6,12 +6,26 @@ from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from inference import load_models, models_status, run_inference
+
+from database.database import engine, Base
+from database import models as db_models  # noqa: F401 — ensures models are registered
+from routes import router as plants_router
+
+import os
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Create database tables on startup
+    Base.metadata.create_all(bind=engine)
+    print("[growloc-ai] Database tables created/verified.")
+
     try:
         load_models()
     except Exception as exc:
@@ -20,7 +34,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Growloc AI Service", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Growloc AI Service", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +43,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve uploaded images as static files
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# Register the new plant/scan/history/compare routes
+app.include_router(plants_router)
 
 
 @app.get("/health")
