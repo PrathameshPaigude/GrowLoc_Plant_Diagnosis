@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
+import type { AnalyzeResult } from "@/lib/analyze-types";
+import { BACKEND_URL } from "@/lib/config";
 
 type AiAnalyzeResponse = {
   canopy_height: number;
@@ -52,68 +51,29 @@ type AiAnalyzeResponse = {
   };
 };
 
-export async function POST(request: Request) {
-  let formData: FormData;
-  try {
-    formData = await request.formData();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid multipart body." },
-      { status: 400 },
-    );
+export type AnalyzeParams = {
+  file: File;
+  enableCanopy: boolean;
+  enableFruit: boolean;
+  enableLeaf: boolean;
+  canopyConf: number;
+  canopyBias: number;
+  fruitConf: number;
+  leafConf: number;
+};
+
+export class AnalyzeError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly detail?: string,
+  ) {
+    super(message);
+    this.name = "AnalyzeError";
   }
+}
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json(
-      { error: "Missing file field \"file\"." },
-      { status: 400 },
-    );
-  }
-
-  const canopyConf = formData.get("canopy_conf") ?? "0.25";
-  const fruitConf = formData.get("fruit_conf") ?? "0.5";
-  const leafConf = formData.get("leaf_conf") ?? "0.4";
-  const canopyBias = formData.get("canopy_area_bias_m2") ?? "29.5";
-  const enableCanopy = formData.get("enable_canopy") ?? "true";
-  const enableFruit = formData.get("enable_fruit") ?? "true";
-  const enableLeaf = formData.get("enable_leaf") ?? "true";
-
-  const aiForm = new FormData();
-  aiForm.append("file", file);
-  aiForm.append("enable_canopy", String(enableCanopy));
-  aiForm.append("enable_fruit", String(enableFruit));
-  aiForm.append("enable_leaf", String(enableLeaf));
-  aiForm.append("canopy_conf", String(canopyConf));
-  aiForm.append("canopy_iou", "0.45");
-  aiForm.append("canopy_area_bias_m2", String(canopyBias));
-  aiForm.append("fruit_conf", String(fruitConf));
-  aiForm.append("fruit_iou", "0.4");
-  aiForm.append("leaf_conf", String(leafConf));
-
-  let aiJson: AiAnalyzeResponse;
-  try {
-    const aiRes = await fetch("http://localhost:8001/analyze", {
-      method: "POST",
-      body: aiForm,
-    });
-    if (!aiRes.ok) {
-      const text = await aiRes.text();
-      return NextResponse.json(
-        {
-          error: "AI service request failed.",
-          detail: text.slice(0, 500),
-        },
-        { status: 502 },
-      );
-    }
-    aiJson = (await aiRes.json()) as AiAnalyzeResponse;
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "AI service unreachable.";
-    return NextResponse.json({ error: message }, { status: 502 });
-  }
-
+function transformResponse(aiJson: AiAnalyzeResponse): AnalyzeResult {
   const canopyAreaM2 = Number(
     aiJson.canopy_area_m2 ?? (aiJson.canopy_area_cm2 ?? 0) / 10_000,
   );
@@ -125,13 +85,10 @@ export async function POST(request: Request) {
     !Number.isFinite(canopyWidth) ||
     !Number.isFinite(canopyAreaM2)
   ) {
-    return NextResponse.json(
-      { error: "AI service returned invalid metrics." },
-      { status: 502 },
-    );
+    throw new AnalyzeError("AI service returned invalid metrics.", 502);
   }
 
-  return NextResponse.json({
+  return {
     canopyHeight,
     canopyWidth,
     canopyArea: canopyAreaM2,
@@ -164,5 +121,44 @@ export async function POST(request: Request) {
       fruit: Boolean(aiJson.models_status?.fruit ?? false),
       leaf: Boolean(aiJson.models_status?.leaf ?? false),
     },
-  });
+  };
+}
+
+/** Calls FastAPI /analyze and maps the response to frontend AnalyzeResult. */
+export async function analyzeImage(params: AnalyzeParams): Promise<AnalyzeResult> {
+  const aiForm = new FormData();
+  aiForm.append("file", params.file);
+  aiForm.append("enable_canopy", String(params.enableCanopy));
+  aiForm.append("enable_fruit", String(params.enableFruit));
+  aiForm.append("enable_leaf", String(params.enableLeaf));
+  aiForm.append("canopy_conf", String(params.canopyConf));
+  aiForm.append("canopy_iou", "0.45");
+  aiForm.append("canopy_area_bias_m2", String(params.canopyBias));
+  aiForm.append("fruit_conf", String(params.fruitConf));
+  aiForm.append("fruit_iou", "0.4");
+  aiForm.append("leaf_conf", String(params.leafConf));
+
+  let aiRes: Response;
+  try {
+    aiRes = await fetch(`${BACKEND_URL}/analyze`, {
+      method: "POST",
+      body: aiForm,
+    });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "AI service unreachable.";
+    throw new AnalyzeError(message, 502);
+  }
+
+  if (!aiRes.ok) {
+    const text = await aiRes.text();
+    throw new AnalyzeError(
+      "AI service request failed.",
+      aiRes.status,
+      text.slice(0, 500),
+    );
+  }
+
+  const aiJson = (await aiRes.json()) as AiAnalyzeResponse;
+  return transformResponse(aiJson);
 }

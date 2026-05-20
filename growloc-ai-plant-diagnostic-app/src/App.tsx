@@ -1,5 +1,5 @@
 import { PlantDashboard } from "@/components/plant-dashboard";
 
-export default function Home() {
+export default function App() {
   return <PlantDashboard />;
 }

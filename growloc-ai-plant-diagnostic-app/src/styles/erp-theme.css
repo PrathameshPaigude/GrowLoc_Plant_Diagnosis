@@ -1,0 +1,9 @@
+:root {
+  /* Company tokens */
+  --erp-primary: #00c71e;           /* from 00C71E_1 */
+  --erp-primary-dark: #005755;      /* from 005755_1 */
+  --erp-primary-light: #00c71e1a;
+  --erp-primary-rgb: 0, 199, 30;
+  --erp-primary-dark-rgb: 0, 87, 85;
+  --erp-primary-light-rgb: 201, 240, 1;
+}

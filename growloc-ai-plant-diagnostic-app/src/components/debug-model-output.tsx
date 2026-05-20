@@ -1,5 +1,3 @@
-"use client";
-
 import { Apple, Leaf } from "lucide-react";
 
 import type { AnalyzeResult } from "@/lib/analyze-types";

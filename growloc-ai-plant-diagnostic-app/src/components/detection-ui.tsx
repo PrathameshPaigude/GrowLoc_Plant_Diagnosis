@@ -1,5 +1,3 @@
-"use client";
-
 import { useLayoutEffect, useRef, useState } from "react";
 
 import type { Detection } from "@/lib/analyze-types";
@@ -138,7 +136,6 @@ export function OverlayPreview({
       ref={containerRef}
       className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
         src={imageUrl}
