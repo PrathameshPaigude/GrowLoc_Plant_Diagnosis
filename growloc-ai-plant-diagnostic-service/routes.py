@@ -26,6 +26,10 @@ class PlantCreate(BaseModel):
     name: str = "Unknown Plant"
     species: str = "Unknown"
 
+class PlantUpdate(BaseModel):
+    name: str | None = None
+    species: str | None = None
+
 
 class PlantOut(BaseModel):
     id: str
@@ -43,6 +47,7 @@ class ScanOut(BaseModel):
     plant_id: str
     timestamp: datetime.datetime
     image_url: str | None
+    note: str | None
     canopy_area_m2: float | None
     fruit_counts: dict
     leaf_counts: dict
@@ -77,6 +82,7 @@ def _scan_to_out(scan: Scan) -> ScanOut:
         plant_id=str(scan.plant_id),
         timestamp=scan.timestamp,
         image_url=scan.image_url,
+        note=scan.note,
         canopy_area_m2=scan.canopy_area_m2,
         fruit_counts=scan.fruit_counts or {},
         leaf_counts=scan.leaf_counts or {},
@@ -182,6 +188,43 @@ def get_plant(plant_id: str, db: Session = Depends(get_db)):
     )
 
 
+@router.put("/plants/{plant_id}", response_model=PlantOut)
+def update_plant(plant_id: str, plant_update: PlantUpdate, db: Session = Depends(get_db)):
+    """Update a plant's details."""
+    plant = db.query(Plant).filter(Plant.id == uuid.UUID(plant_id)).first()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    
+    if plant_update.name is not None:
+        plant.name = plant_update.name
+    if plant_update.species is not None:
+        plant.species = plant_update.species
+        
+    db.commit()
+    db.refresh(plant)
+    
+    scan_count = db.query(Scan).filter(Scan.plant_id == plant.id).count()
+    return PlantOut(
+        id=str(plant.id),
+        name=plant.name,
+        species=plant.species,
+        created_at=plant.created_at,
+        total_scans=scan_count,
+    )
+
+
+@router.delete("/plants/{plant_id}")
+def delete_plant(plant_id: str, db: Session = Depends(get_db)):
+    """Delete a plant and all its associated scans."""
+    plant = db.query(Plant).filter(Plant.id == uuid.UUID(plant_id)).first()
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+        
+    db.delete(plant)
+    db.commit()
+    return {"message": "Plant deleted successfully"}
+
+
 # ── Scan (Upload + AI Analysis + Store) ─────────────────────────────────────
 
 @router.post("/plants/{plant_id}/scans", response_model=ScanOut)
@@ -194,6 +237,7 @@ async def create_scan(
     canopy_conf: float = Form(0.10),
     fruit_conf: float = Form(0.5),
     leaf_conf: float = Form(0.4),
+    note: str = Form(None),
     db: Session = Depends(get_db),
 ):
     """Upload an image, run AI inference, and store the results as a new scan."""
@@ -245,6 +289,7 @@ async def create_scan(
         id=scan_id,
         plant_id=plant.id,
         image_url=f"/uploads/{image_filename}",
+        note=note,
         canopy_area_m2=metrics.get("canopy_area_m2", 0.0),
         fruit_counts=fruit_counts_data,
         leaf_counts=leaf_counts_data,

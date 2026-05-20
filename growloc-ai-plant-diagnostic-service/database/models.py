@@ -21,8 +21,8 @@ class Scan(Base):
     id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
     plant_id = Column(Uuid, ForeignKey("plants.id"), index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    
     image_url = Column(String, nullable=True)
+    note = Column(String, nullable=True)
     
     # Canopy Metrics
     canopy_area_m2 = Column(Float, nullable=True)
