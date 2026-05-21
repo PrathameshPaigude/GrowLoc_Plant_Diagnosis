@@ -12,7 +12,6 @@ from PIL import Image, ImageOps
 from ultralytics import YOLO
 
 _models_loaded = False
-_canopy_model: YOLO | None = None
 _fruit_model: YOLO | None = None
 _leaf_model: YOLO | None = None
 
@@ -82,7 +81,7 @@ def _find_model_file(filename: str) -> Path | None:
 def models_status() -> dict[str, bool]:
     """Report which model weights are loaded in memory."""
     return {
-        "canopy": _canopy_model is not None,
+        "canopy": True,  # Deterministic HSV — always available
         "fruit": _fruit_model is not None,
         "leaf": _leaf_model is not None,
     }
@@ -90,19 +89,9 @@ def models_status() -> dict[str, bool]:
 
 def load_models() -> None:
     """Load YOLO checkpoints. Safe to call repeatedly — fills in any missing models."""
-    global _models_loaded, _canopy_model, _fruit_model, _leaf_model
+    global _models_loaded, _fruit_model, _leaf_model
 
-    # ── Canopy model (Canopy-Metrics: best.pt or canopy_model.pt) ──
-    if _canopy_model is None:
-        canopy_path = _find_canopy_model()
-        if canopy_path:
-            _canopy_model = YOLO(str(canopy_path))
-            print(f"[growloc-ai] ✅ canopy model loaded from {canopy_path}")
-        elif not _models_loaded:
-            print(
-                "[growloc-ai] ⚠️  canopy weights not found "
-                "(expected best.pt in Canopy-Metrics-main) – canopy analysis disabled"
-            )
+    # ── Canopy model removed. We now use deterministic OpenCV HSV math ──
 
     # ── Fruit / strawberry model ──
     if _fruit_model is None:
@@ -175,51 +164,24 @@ def _extract_canopy_hw_px(result: Any) -> tuple[float, float]:
     return float(heights[idx]), float(widths[idx])
 
 
-def _sum_canopy_area_m2_hsv(
-    result: Any,
-    image_bgr: np.ndarray,
-    width_scale_m: float,
-    height_scale_m: float,
-) -> tuple[float, list[float]]:
-    """Sum HSV-masked green area inside bounding boxes for all canopy plants, returned in m²."""
+CM2_PER_PIXEL = 0.05 
+
+def process_canopy(img_bgr, cm2_ratio):
     import cv2
+    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    lower_plant = np.array([20, 40, 40])  
+    upper_plant = np.array([90, 255, 255]) 
     
-    boxes = getattr(result, "boxes", None)
-    if boxes is None or len(boxes) == 0:
-        return 0.0, []
-
-    xyxy = boxes.xyxy.cpu().numpy()
-    zone_areas: list[float] = []
+    plant_mask = cv2.inRange(hsv, lower_plant, upper_plant)
+    plant_pixels = cv2.countNonZero(plant_mask)
+    canopy_area_cm2 = plant_pixels * cm2_ratio
     
-    # Define HSV bounds for green vegetation
-    lower_green = np.array([35, 40, 40])
-    upper_green = np.array([85, 255, 255])
-
-    for box in xyxy:
-        x1, y1, x2, y2 = [int(v) for v in box]
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(image_bgr.shape[1], x2), min(image_bgr.shape[0], y2)
-        
-        if x2 <= x1 or y2 <= y1:
-            zone_areas.append(0.0)
-            continue
-            
-        crop_bgr = image_bgr[y1:y2, x1:x2]
-        crop_hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
-        
-        # Create a binary mask where green pixels are 255, others 0
-        mask = cv2.inRange(crop_hsv, lower_green, upper_green)
-        
-        # Count number of green pixels
-        green_pixel_count = float(cv2.countNonZero(mask))
-        
-        # Calculate area: number of pixels * area of a single pixel in m²
-        pixel_area_m2 = width_scale_m * height_scale_m
-        area_m2 = green_pixel_count * pixel_area_m2
-        
-        zone_areas.append(area_m2)
-
-    return float(sum(zone_areas)), zone_areas
+    canopy_visual = cv2.bitwise_and(img_bgr, img_bgr, mask=plant_mask)
+    title = f"Total Canopy Area: {canopy_area_cm2:.2f} cm sq"
+    cv2.rectangle(canopy_visual, (0, 0), (canopy_visual.shape[1], 40), (0, 0, 0), -1)
+    cv2.putText(canopy_visual, title, (15, 27), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+    
+    return canopy_area_cm2, canopy_visual
 
 
 def _extract_leaf_area_ratio(result: Any, image_shape: tuple[int, int, int]) -> float:
@@ -451,11 +413,25 @@ def run_inference(
 
     # ── Run each enabled model ──
     # Note: YOLO models expect BGR numpy arrays, so we pass image_bgr
-    canopy_result = (
-        _run_model(_canopy_model, image_bgr, conf=canopy_conf, iou=canopy_iou)
-        if enable_canopy
-        else None
-    )
+    canopy_visual_base64 = None
+    canopy_area_cm2 = 0.0
+    canopy_area_m2 = 0.0
+    canopy_area_raw_m2 = 0.0
+    
+    if enable_canopy:
+        canopy_area_cm2, canopy_visual = process_canopy(image_bgr, CM2_PER_PIXEL)
+        canopy_area_raw_m2 = canopy_area_cm2 / 10000.0
+        if canopy_area_bias_m2 is None:
+            canopy_area_bias_m2 = float(os.getenv("CANOPY_AREA_BIAS_M2", "0.0"))
+        canopy_area_m2 = canopy_area_raw_m2 + canopy_area_bias_m2
+        
+        # Base64 encode the resulting canopy visual
+        import cv2
+        import base64
+        success, buffer = cv2.imencode('.webp', canopy_visual, [cv2.IMWRITE_WEBP_QUALITY, 60])
+        if success:
+            canopy_visual_base64 = base64.b64encode(buffer).decode('utf-8')
+
     fruit_result = (
         _run_model(_fruit_model, image_bgr, conf=fruit_conf, iou=fruit_iou)
         if enable_fruit
@@ -465,50 +441,11 @@ def run_inference(
         _run_model(_leaf_model, image_bgr, conf=leaf_conf) if enable_leaf else None
     )
 
-    # ── Canopy metrics ──
-    canopy_height_px, canopy_width_px = _extract_canopy_hw_px(canopy_result)
-
-    # Calibrate so that the largest detected canopy maps to 45cm x 30cm.
-    # Since height in pixels (vertical) is larger than width in pixels, height maps to 45cm, width to 30cm.
-    if canopy_height_px > 0 and canopy_width_px > 0:
-        height_scale = 45.0 / canopy_height_px  # cm per pixel
-        width_scale = 30.0 / canopy_width_px    # cm per pixel
-    else:
-        # Fallback to standard 1cm/px if no canopy is detected
-        height_scale = 1.0
-        width_scale = 1.0
-
-    canopy_height_cm = canopy_height_px * height_scale
-    canopy_width_cm = canopy_width_px * width_scale
-    
-    width_scale_m = width_scale / 100.0
-    height_scale_m = height_scale / 100.0
-    meters_per_pixel = (height_scale + width_scale) / 2.0 / 100.0
-
-    canopy_area_raw_m2, canopy_zone_areas_m2 = _sum_canopy_area_m2_hsv(
-        canopy_result, image_bgr, width_scale_m, height_scale_m
-    )
-    if canopy_area_raw_m2 <= 0 and canopy_height_cm > 0 and canopy_width_cm > 0:
-        canopy_area_raw_m2 = (canopy_height_cm / 100.0) * (canopy_width_cm / 100.0)
-
-    if canopy_area_bias_m2 is None:
-        canopy_area_bias_m2 = float(os.getenv("CANOPY_AREA_BIAS_M2", "0.0"))
-    canopy_area_m2 = canopy_area_raw_m2 + canopy_area_bias_m2
-
-    # Legacy cm fields (derived from meters for API compatibility)
-    canopy_height_m = canopy_height_cm / 100.0
-    canopy_width_m = canopy_width_cm / 100.0
-    canopy_area_cm2 = canopy_area_m2 * 10_000.0
-
     # ── Leaf area ratio (segmentation masks) ──
     leaf_area = _extract_leaf_area_ratio(leaf_result, image_rgb.shape)
 
     # ── Detections ──
-    canopy_detections = _extract_detections(canopy_result, image_rgb)
-    for d in canopy_detections:
-        if d["label"] == "0":
-            d["label"] = "Canopy"
-            
+    canopy_detections = []
     fruit_detections = _extract_detections(fruit_result, image_rgb)
 
     # Use HSV-based leaf color classification (matches leavescounting27m approach)
@@ -523,21 +460,22 @@ def run_inference(
 
     return {
         # Backward-compatible fields now represent centimeters.
-        "canopy_height": round(float(canopy_height_cm), 2),
-        "canopy_width": round(float(canopy_width_cm), 2),
+        "canopy_height": 0.0,
+        "canopy_width": 0.0,
         "canopy_area": round(float(canopy_area_m2), 2),
-        "canopy_height_px": round(float(canopy_height_px), 2),
-        "canopy_width_px": round(float(canopy_width_px), 2),
-        "canopy_height_cm": round(float(canopy_height_cm), 2),
-        "canopy_width_cm": round(float(canopy_width_cm), 2),
+        "canopy_height_px": 0.0,
+        "canopy_width_px": 0.0,
+        "canopy_height_cm": 0.0,
+        "canopy_width_cm": 0.0,
         "canopy_area_cm2": round(float(canopy_area_cm2), 2),
         "canopy_area_m2": round(float(canopy_area_m2), 2),
         "canopy_area_raw_m2": round(float(canopy_area_raw_m2), 2),
-        "canopy_area_bias_m2": round(float(canopy_area_bias_m2), 2),
-        "canopy_area_zones_m2": [round(z, 2) for z in canopy_zone_areas_m2],
-        "canopy_pixel_to_cm": meters_per_pixel * 100.0,
-        "canopy_meters_per_pixel": meters_per_pixel,
-        "canopy_calibrated": meters_per_pixel != 0.01,
+        "canopy_area_bias_m2": round(float(canopy_area_bias_m2 or 0.0), 2),
+        "canopy_area_zones_m2": [],
+        "canopy_pixel_to_cm": CM2_PER_PIXEL,
+        "canopy_meters_per_pixel": CM2_PER_PIXEL / 10000.0,
+        "canopy_calibrated": True,
+        "canopy_visual_base64": canopy_visual_base64,
         "canopy_detections": canopy_detections,
         "fruit_detections": fruit_detections,
         "leaf_detections": leaf_detections,
@@ -553,7 +491,7 @@ def run_inference(
         },
         # Report which models are active so the frontend can show status
         "models_status": {
-            "canopy": _canopy_model is not None,
+            "canopy": True, # Using HSV OpenCV
             "fruit": _fruit_model is not None,
             "leaf": _leaf_model is not None,
         },

@@ -22,6 +22,7 @@ export type AnalyzeResult = {
   canopyCalibrated: boolean;
   imageWidth: number;
   imageHeight: number;
+  canopyVisualBase64?: string;
   canopyDetections: Detection[];
   fruitDetections: Detection[];
   leafDetections: Detection[];

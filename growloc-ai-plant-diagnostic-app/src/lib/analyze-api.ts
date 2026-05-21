@@ -18,6 +18,7 @@ type AiAnalyzeResponse = {
   canopy_calibrated?: boolean;
   image_width?: number;
   image_height?: number;
+  canopy_visual_base64?: string;
   canopy_detections?: Array<{
     label: string;
     color?: string;
@@ -103,6 +104,7 @@ function transformResponse(aiJson: AiAnalyzeResponse): AnalyzeResult {
     canopyAreaZonesM2: aiJson.canopy_area_zones_m2 ?? [],
     canopyPixelToCm: Number(aiJson.canopy_pixel_to_cm ?? 1),
     canopyCalibrated: Boolean(aiJson.canopy_calibrated ?? false),
+    canopyVisualBase64: aiJson.canopy_visual_base64,
     canopyDetections: aiJson.canopy_detections ?? [],
     fruitDetections: aiJson.fruit_detections ?? [],
     leafDetections: aiJson.leaf_detections ?? [],

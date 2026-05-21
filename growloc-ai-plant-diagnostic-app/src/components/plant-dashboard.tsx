@@ -276,10 +276,11 @@ export function PlantDashboard() {
       });
       setResult(data);
       if (previewUrl) {
-        const composite = await buildCompositeImage(previewUrl, data, models);
+        const composite = await buildCompositeImage(previewUrl, data, { canopy: false, fruit: models.fruit, leaf: models.leaf });
         setCompositeUrl(composite);
 
-        const cImg = models.canopy ? await buildCompositeImage(previewUrl, data, { canopy: true, fruit: false, leaf: false }) : null;
+        // Canopy image comes pre-rendered from the backend as base64
+        const cImg = (models.canopy && data.canopyVisualBase64) ? `data:image/webp;base64,${data.canopyVisualBase64}` : null;
         const fImg = models.fruit ? await buildCompositeImage(previewUrl, data, { canopy: false, fruit: true, leaf: false }) : null;
         const lImg = models.leaf ? await buildCompositeImage(previewUrl, data, { canopy: false, fruit: false, leaf: true }) : null;
         setDetailedImages({ canopy: cImg, fruit: fImg, leaf: lImg });
@@ -913,45 +914,9 @@ export function PlantDashboard() {
                     </div>
                   </div>
                ) : (
-                  /* Detailed View - Sequential Layout */
+                  /* Detailed View - Sequential Layout: Fruit → Leaf → Canopy */
                   <div className="flex flex-col gap-12 pb-24">
                      
-                     {/* Canopy Block */}
-                     {models.canopy && result.canopyDetections.length > 0 && (
-                       <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
-                         <h3 className="text-xl font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-2"><Search className="size-5"/> Canopy Analysis</h3>
-                         <div className="flex flex-col lg:flex-row gap-6 flex-1">
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2">
-                              {detailedImages.canopy ? (
-                                <img src={detailedImages.canopy} className="max-w-full max-h-[70vh] object-contain" />
-                              ) : <div className="text-slate-500">Image processing...</div>}
-                           </div>
-                           <div className="w-full lg:w-[400px] shrink-0">
-                             <Card className="border-emerald-500/20 bg-slate-900/40 backdrop-blur-md rounded-xl h-full">
-                               <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20 pb-4">
-                                 <CardTitle className="text-emerald-100 text-lg">Metrics Table</CardTitle>
-                               </CardHeader>
-                               <CardContent className="pt-4">
-                                  <div className="mb-6 flex justify-between items-center bg-emerald-500/20 px-4 py-3 rounded-lg border border-emerald-500/30">
-                                    <span className="text-emerald-100 font-medium">Total Area</span>
-                                    <span className="text-white font-mono font-bold text-lg">{(result.canopyAreaM2 ?? result.canopyAreaCm2 / 10000).toFixed(4)} m²</span>
-                                  </div>
-                                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-3">Individual Detections</p>
-                                  <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                                    {result.canopyDetections.map((det, i) => (
-                                      <div key={i} className="bg-white/5 border border-white/10 rounded-md px-3 py-2 flex justify-between items-center">
-                                         <span className="text-sm text-slate-200 capitalize">{det.label}</span>
-                                         <span className="text-xs font-bold text-emerald-400">{(det.confidence * 100).toFixed(1)}%</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                               </CardContent>
-                             </Card>
-                           </div>
-                         </div>
-                       </div>
-                     )}
-
                      {/* Fruits Block */}
                      {models.fruit && result.fruitDetections.length > 0 && (
                        <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
@@ -1033,6 +998,38 @@ export function PlantDashboard() {
                                     </table>
                                   </div>
                                   <p className="text-xs text-slate-500 italic mt-3">Scroll table to view all leaves.</p>
+                               </CardContent>
+                             </Card>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Canopy Block */}
+                     {models.canopy && (
+                       <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
+                         <h3 className="text-xl font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-2"><Search className="size-5"/> Canopy Analysis</h3>
+                         <div className="flex flex-col lg:flex-row gap-6 flex-1">
+                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2">
+                              {detailedImages.canopy ? (
+                                <img src={detailedImages.canopy} className="max-w-full max-h-[70vh] object-contain" />
+                              ) : <div className="text-slate-500">Image processing...</div>}
+                           </div>
+                           <div className="w-full lg:w-[400px] shrink-0">
+                             <Card className="border-emerald-500/20 bg-slate-900/40 backdrop-blur-md rounded-xl h-full">
+                               <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20 pb-4">
+                                 <CardTitle className="text-emerald-100 text-lg">Metrics Table</CardTitle>
+                               </CardHeader>
+                               <CardContent className="pt-4">
+                                  <div className="mb-6 flex justify-between items-center bg-emerald-500/20 px-4 py-3 rounded-lg border border-emerald-500/30">
+                                    <span className="text-emerald-100 font-medium">Total Area</span>
+                                    <span className="text-white font-mono font-bold text-lg">{(result.canopyAreaM2 ?? result.canopyAreaCm2 / 10000).toFixed(4)} m²</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-emerald-500/10 px-4 py-3 rounded-lg border border-emerald-500/20">
+                                    <span className="text-emerald-100 font-medium">Area (cm²)</span>
+                                    <span className="text-white font-mono font-bold text-lg">{result.canopyAreaCm2.toFixed(2)} cm²</span>
+                                  </div>
+                                  <p className="text-xs text-slate-500 mt-4">Canopy area is computed via deterministic HSV thresholding (Hue 20–90) on the full image. No AI model is used.</p>
                                </CardContent>
                              </Card>
                            </div>
