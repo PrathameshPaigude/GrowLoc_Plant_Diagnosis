@@ -1,0 +1,487 @@
+/* Growloc ERP — modern tactile UI (separate embedded stylesheet) */
+
+/* ── Typography (Inter) ── */
+.erp-app {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Dark baseline (#121212) + Growloc brand surfaces ── */
+html.dark,
+html.dark .erp-app {
+  --erp-bg-base: #121212;
+  --erp-bg-elevated: #1a1f1e;
+  --erp-bg-card: #1e2423;
+  --erp-surface: #1a1f1e;
+  --erp-surface-muted: #121212;
+  --erp-surface-elevated: rgba(30, 36, 35, 0.78);
+  --erp-text: #f4f4f5;
+  --erp-text-muted: #94a3b8;
+  --erp-border: rgba(255, 255, 255, 0.08);
+  --erp-border-strong: rgba(255, 255, 255, 0.14);
+  --erp-radius-squircle: 1.375rem;
+  --erp-detection-bg: rgba(0, 199, 30, 0.08);
+}
+
+html.light,
+html.light .erp-app {
+  --erp-bg-base: var(--erp-green-page-top);
+  --erp-bg-elevated: #ffffff;
+  --erp-bg-card: #ffffff;
+  --erp-surface: #ffffff;
+  --erp-surface-muted: var(--erp-green-page-top);
+  --erp-surface-elevated: rgba(255, 255, 255, 0.92);
+  --erp-text: #0f172a;
+  --erp-text-muted: #64748b;
+  --erp-border: rgba(0, 87, 85, 0.1);
+  --erp-border-strong: rgba(0, 87, 85, 0.2);
+  --erp-radius-squircle: 1.375rem;
+  --erp-detection-bg: var(--erp-green-panel);
+}
+
+html.dark body {
+  background-color: var(--erp-bg-base);
+  color: var(--erp-text);
+}
+
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background: var(--erp-green-page-top);
+  color: var(--erp-text);
+  transition: background-color 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.light.erp-scroll-green body,
+html.light.erp-scroll-green .erp-app {
+  background-color: var(--erp-green-page-scroll);
+}
+
+/* ── Page background: white at top → subtle green on scroll (Growloc.com style) ── */
+.erp-mesh-canvas {
+  background-color: var(--erp-bg-base);
+  background-image:
+    radial-gradient(ellipse 85% 65% at 8% 12%, rgba(var(--erp-primary-rgb), 0.2), transparent 58%),
+    radial-gradient(ellipse 70% 55% at 92% 18%, rgba(var(--erp-primary-dark-rgb), 0.28), transparent 52%),
+    radial-gradient(ellipse 75% 60% at 48% 95%, rgba(var(--erp-primary-rgb), 0.1), transparent 55%);
+  transition: background-color 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.light .erp-mesh-canvas {
+  background-color: var(--erp-green-page-top);
+  background-image:
+    radial-gradient(ellipse 90% 70% at 12% 8%, rgba(var(--erp-primary-rgb), 0.06), transparent 55%),
+    radial-gradient(ellipse 80% 60% at 88% 20%, rgba(var(--erp-primary-dark-rgb), 0.05), transparent 50%);
+}
+
+html.light.erp-scroll-green .erp-mesh-canvas,
+html.light.erp-scroll-green body {
+  background-color: var(--erp-green-page-scroll);
+}
+
+html.light.erp-scroll-green .erp-mesh-canvas {
+  background-image:
+    radial-gradient(ellipse 95% 75% at 50% 0%, rgba(var(--erp-primary-rgb), 0.09), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 10% 80%, rgba(var(--erp-primary-dark-rgb), 0.06), transparent 55%);
+}
+
+html.dark.erp-scroll-green .erp-mesh-canvas {
+  background-color: #141a18;
+  background-image:
+    radial-gradient(ellipse 85% 65% at 8% 12%, rgba(var(--erp-primary-rgb), 0.14), transparent 58%),
+    radial-gradient(ellipse 70% 55% at 92% 18%, rgba(var(--erp-primary-dark-rgb), 0.2), transparent 52%);
+}
+
+/* ── Squircle corners + layered soft shadows ── */
+.erp-squircle {
+  border-radius: var(--erp-radius-squircle);
+}
+
+.erp-glass {
+  border-radius: var(--erp-radius-squircle);
+  background: var(--erp-surface-elevated);
+  border: 1px solid var(--erp-border);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    0 20px 48px -12px rgba(0, 0, 0, 0.18);
+  transition:
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.2s ease;
+}
+
+.erp-glass:hover {
+  border-color: rgba(var(--erp-primary-rgb), 0.22);
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 28px 56px -14px rgba(var(--erp-primary-rgb), 0.12);
+}
+
+html.light .erp-glass {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: var(--erp-green-panel-border);
+  box-shadow:
+    0 1px 2px rgba(0, 87, 85, 0.05),
+    0 8px 24px rgba(0, 87, 85, 0.07),
+    0 24px 48px -16px rgba(0, 87, 85, 0.12);
+}
+
+/* Opaque frosted panels (sections) */
+.erp-glass-opaque {
+  border-radius: var(--erp-radius-squircle);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--erp-green-panel-border);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+  box-shadow:
+    0 2px 4px rgba(0, 87, 85, 0.04),
+    0 10px 28px rgba(0, 87, 85, 0.08),
+    0 32px 64px -20px rgba(0, 87, 85, 0.14);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease,
+    border-color 0.25s ease,
+    background 0.35s ease;
+}
+
+html.dark .erp-glass-opaque {
+  background: rgba(30, 38, 36, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.25),
+    0 40px 80px -24px rgba(0, 0, 0, 0.45);
+}
+
+/* Section hover — upload, scan details, history */
+.erp-section-panel:hover {
+  transform: translateY(-4px);
+  border-color: rgba(var(--erp-primary-rgb), 0.35);
+  box-shadow:
+    0 4px 8px rgba(0, 87, 85, 0.06),
+    0 16px 40px rgba(var(--erp-primary-rgb), 0.12),
+    0 40px 80px -24px rgba(0, 87, 85, 0.18);
+}
+
+html.light .erp-section-panel:hover {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html.dark .erp-section-panel:hover {
+  background: rgba(36, 44, 42, 0.95);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 24px 56px -12px rgba(var(--erp-primary-rgb), 0.15);
+}
+
+/* Detection view containers — lighter green tint (summary / detailed boxes) */
+.erp-detection-panel {
+  border-radius: var(--erp-radius-squircle);
+  background: var(--erp-detection-bg);
+  border: 1px solid var(--erp-green-panel-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 3px rgba(0, 87, 85, 0.05),
+    0 8px 24px rgba(0, 87, 85, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.3s ease,
+    border-color 0.25s ease;
+}
+
+html.light .erp-detection-panel {
+  background: var(--erp-green-panel);
+  border-color: rgba(var(--erp-primary-rgb), 0.12);
+}
+
+html.dark .erp-detection-panel {
+  background: rgba(0, 199, 30, 0.07);
+  border-color: rgba(var(--erp-primary-rgb), 0.18);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.erp-detection-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--erp-primary-rgb), 0.28);
+  box-shadow:
+    0 6px 16px rgba(0, 87, 85, 0.08),
+    0 20px 48px -12px rgba(var(--erp-primary-rgb), 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+html.light .erp-detection-panel:hover {
+  background: #fafefc;
+}
+
+/* ── Light mode overrides (hardcoded utilities in dashboard) ── */
+html.light .erp-app .text-white {
+  color: var(--erp-text);
+}
+
+html.light .erp-app .text-slate-200,
+html.light .erp-app .text-slate-300 {
+  color: #334155;
+}
+
+html.light .erp-app .text-slate-400,
+html.light .erp-app .text-slate-500,
+html.light .erp-app .text-slate-600 {
+  color: var(--erp-text-muted);
+}
+
+html.light .erp-app .bg-black\/20,
+html.light .erp-app .bg-black\/30,
+html.light .erp-app .bg-black\/40,
+html.light .erp-app .bg-black\/50,
+html.light .erp-app .bg-black\/60,
+html.light .erp-app .bg-black\/80 {
+  background-color: rgba(0, 87, 85, 0.05);
+}
+
+html.light .erp-app .bg-slate-900,
+html.light .erp-app .bg-slate-900\/40,
+html.light .erp-app .bg-slate-900\/60 {
+  background-color: #ffffff;
+}
+
+html.light .erp-app .border-white\/5,
+html.light .erp-app .border-white\/10,
+html.light .erp-app .border-white\/20 {
+  border-color: var(--erp-border);
+}
+
+html.light .erp-app .bg-white\/\[0\.02\],
+html.light .erp-app .bg-white\/5,
+html.light .erp-app .bg-white\/\[0\.04\] {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+html.light .erp-app .hover\:bg-white\/5:hover,
+html.light .erp-app .hover\:bg-white\/10:hover {
+  background-color: rgba(var(--erp-primary-rgb), 0.06);
+}
+
+html.light .erp-app header.erp-header {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--erp-border);
+}
+
+html.light .erp-app .erp-results-bar {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+html.light .erp-app .text-primary-100 {
+  color: var(--erp-primary-dark);
+}
+
+html.light .erp-app .text-amber-100 {
+  color: #b45309;
+}
+
+html.light .erp-app .text-cyan-100 {
+  color: #0e7490;
+}
+
+html.light .erp-app .text-emerald-100,
+html.light .erp-app .text-emerald-400 {
+  color: var(--erp-primary-dark);
+}
+
+html.light .erp-logo {
+  filter: none;
+}
+
+html.dark .erp-logo {
+  filter: brightness(1.05);
+}
+
+/* ── Header ── */
+.erp-header {
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+}
+
+.erp-brand-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.erp-brand-tagline {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--erp-text-muted);
+}
+
+/* ── Bento metrics grid ── */
+.erp-bento-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.erp-bento-cell {
+  border-radius: var(--erp-radius-squircle);
+  border: 1px solid var(--erp-border);
+  background: var(--erp-surface-elevated);
+  backdrop-filter: blur(12px);
+  padding: 1.125rem 1.25rem;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.erp-bento-cell:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(var(--erp-primary-rgb), 0.3);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    0 12px 32px rgba(var(--erp-primary-rgb), 0.1);
+}
+
+.erp-bento-cell--wide {
+  grid-column: 1 / -1;
+}
+
+/* ── Micro-interactions ── */
+.erp-interactive {
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+.erp-interactive:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.erp-interactive:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ── Skeleton loaders ── */
+.erp-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--erp-radius-squircle);
+}
+
+html.light .erp-skeleton {
+  background: rgba(0, 87, 85, 0.08);
+}
+
+.erp-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  animation: erp-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes erp-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Subtle scroll reveal (no layout change) ── */
+.erp-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.erp-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.erp-reveal-delay-1 {
+  transition-delay: 70ms;
+}
+
+.erp-reveal-delay-2 {
+  transition-delay: 140ms;
+}
+
+/* Nested scroll — contain without trapping page */
+.erp-nested-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Scroll cue */
+.erp-scroll-cue {
+  animation: erp-bounce-y 2.2s ease-in-out infinite;
+}
+
+@keyframes erp-bounce-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+/* Generous spacing utility */
+.erp-panel-pad {
+  padding: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .erp-panel-pad {
+    padding: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-mesh-canvas {
+    transition: none;
+  }
+
+  .erp-reveal,
+  .erp-scroll-cue,
+  .erp-bento-cell,
+  .erp-interactive,
+  .erp-glass,
+  .erp-glass-opaque,
+  .erp-section-panel,
+  .erp-detection-panel {
+    animation: none;
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .erp-skeleton::after {
+    animation: none;
+  }
+}

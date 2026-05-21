@@ -1,9 +1,23 @@
 :root {
-  /* Company tokens */
-  --erp-primary: #00c71e;           /* from 00C71E_1 */
-  --erp-primary-dark: #005755;      /* from 005755_1 */
+  /* Stakeholder ERP color tokens */
+  --erp-primary: #00c71e; /* 00C71E_1 */
+  --erp-primary-dark: #005755; /* 005755_1 */
   --erp-primary-light: #00c71e1a;
   --erp-primary-rgb: 0, 199, 30;
   --erp-primary-dark-rgb: 0, 87, 85;
   --erp-primary-light-rgb: 201, 240, 1;
+
+  /* Aliases for Tailwind / shadcn */
+  --primary: var(--erp-primary);
+  --primary-dark: var(--erp-primary-dark);
+  --primary-light: var(--erp-primary-light);
+  --primary-rgb: var(--erp-primary-rgb);
+  --primary-dark-rgb: var(--erp-primary-dark-rgb);
+  --primary-light-rgb: var(--erp-primary-light-rgb);
+
+  /* Growloc page greens (scroll + detection panels) */
+  --erp-green-page-top: #ffffff;
+  --erp-green-page-scroll: #f0faf2;
+  --erp-green-panel: #f7fcf9;
+  --erp-green-panel-border: rgba(0, 87, 85, 0.1);
 }

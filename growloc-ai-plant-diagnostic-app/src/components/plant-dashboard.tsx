@@ -15,7 +15,10 @@ import type {
 import { AnalyzeError, analyzeImage } from "@/lib/analyze-api";
 import { buildCompositeImage } from "@/lib/composite-image";
 import { BACKEND_URL } from "@/lib/config";
-import { Camera, ScanSearch, Upload, GitCompareArrows, Sprout, ImageIcon, Search, AlignJustify, List, ChevronDown, ChevronUp, Image as ImageIconLucide, Sun, Moon, Pencil, Trash2 } from "lucide-react";
+import { useScrollReveal } from "@/hooks/use-scroll-reveal";
+import { useMonitorScrollBg } from "@/hooks/use-monitor-scroll-bg";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Camera, ScanSearch, Upload, GitCompareArrows, ImageIcon, Search, AlignJustify, List, ChevronDown, ChevronUp, Image as ImageIconLucide, Sun, Moon, Pencil, Trash2 } from "lucide-react";
 
 export type { AnalyzeResult } from "@/lib/analyze-types";
 
@@ -95,17 +98,17 @@ export function PlantDashboard() {
   // Isolated images for detailed view
   const [detailedImages, setDetailedImages] = useState<{canopy: string|null, fruit: string|null, leaf: string|null}>({canopy: null, fruit: null, leaf: null});
 
-  // Theme State
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const saved = localStorage.getItem("growloc-theme");
+    return saved === "light" ? "light" : "dark";
+  });
   const [liveActive, setLiveActive] = useState(false);
-
-  // Theme effect
   useEffect(() => {
-    if (theme === "light") {
-      document.documentElement.classList.add("light");
-    } else {
-      document.documentElement.classList.remove("light");
-    }
+    const root = document.documentElement;
+    root.classList.remove("dark", "light");
+    root.classList.add(theme);
+    root.setAttribute("data-theme", theme);
+    localStorage.setItem("growloc-theme", theme);
   }, [theme]);
 
   const [canopyConf] = useState(0.10);
@@ -126,6 +129,9 @@ export function PlantDashboard() {
   // UI View state
   const [viewState, setViewState] = useState<"home" | "results">("home");
   const [detectionMode, setDetectionMode] = useState<"summary" | "detailed">("summary");
+
+  useScrollReveal(".erp-app", [viewState, detectionMode, history.length]);
+  useMonitorScrollBg(viewState === "home");
 
   // Inline Info Form State
   const [modalTab, setModalTab] = useState<"new" | "existing">("new");
@@ -385,13 +391,16 @@ export function PlantDashboard() {
   const isFormValid = (modalTab === "new" && modalPlantName.trim()) || (modalTab === "existing" && modalSelectedId);
 
   return (
-    <div className={`flex min-h-screen w-full flex-col bg-background text-foreground selection:bg-primary/30 font-sans ${theme}`}>
+    <div className="erp-app plant-dashboard-root flex min-h-screen w-full flex-col bg-background text-foreground selection:bg-primary/30 font-sans">
       
       {/* ── Main Header ── */}
-      <header className="sticky top-0 z-50 flex shrink-0 items-center justify-between border-b border-border bg-card/90 px-8 py-3 backdrop-blur-xl">
+      <header className="erp-header erp-glass-opaque sticky top-0 z-50 flex shrink-0 items-center justify-between border-b border-border px-8 py-3">
         <div className="flex items-center gap-4">
-          <img src="/logo.svg" alt="Growloc Logo" className="h-7 w-auto" />
-          <h1 className="text-lg font-bold text-white tracking-tight ml-2">Diagnostic Hub</h1>
+          <img src="/logo.svg" alt="Growloc" className="erp-logo h-8 w-auto" />
+          <div className="ml-1 border-l border-border pl-4">
+            <p className="erp-brand-tagline text-primary/80">Plant monitoring</p>
+            <h1 className="erp-brand-title text-white">Diagnostic Hub</h1>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           {viewState === "results" && (
@@ -401,7 +410,7 @@ export function PlantDashboard() {
           )}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="erp-interactive erp-squircle flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold shadow-sm hover:bg-accent hover:text-accent-foreground"
           >
             {theme === "dark" ? (
               <><Sun className="size-3" /> Light Mode</>
@@ -414,7 +423,7 @@ export function PlantDashboard() {
 
       {/* ── Secondary Sticky Header for Results ── */}
       {viewState === "results" && result && (
-        <div className="sticky top-[53px] z-40 flex shrink-0 items-center justify-between border-b border-border bg-black/80 px-8 py-3 backdrop-blur-md shadow-lg">
+        <div className="erp-results-bar erp-glass sticky top-[53px] z-40 flex shrink-0 items-center justify-between border-b border-border px-8 py-3 shadow-lg">
            <div className="flex items-center gap-4">
              <h2 className="text-lg font-bold text-white tracking-wide">Diagnostic Results</h2>
              <div className="flex items-center gap-2 text-xs font-medium text-slate-400 border-l border-white/20 pl-4">
@@ -443,10 +452,7 @@ export function PlantDashboard() {
 
       {/* ── Main Content Area ── */}
       <main className="flex-1 relative flex flex-col items-center w-full">
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute left-[-10%] top-[-10%] size-[500px] rounded-full bg-primary/5 blur-[120px] mix-blend-screen" />
-          <div className="absolute right-[-10%] top-[40%] size-[400px] rounded-full bg-secondary/5 blur-[120px] mix-blend-screen" />
-        </div>
+        <div className="erp-mesh-canvas pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
 
         <div className="w-full max-w-[1400px] flex-1 px-4 lg:px-8 pb-12">
           
@@ -454,16 +460,16 @@ export function PlantDashboard() {
           {viewState === "home" && (
             <div className="flex flex-col w-full min-h-[calc(100vh-60px)]">
               {/* TOP SECTION: 100vh fit (Upload + Info) */}
-              <div className="flex flex-col md:flex-row gap-6 pt-6 pb-4 w-full h-[calc(100vh-100px)]">
+              <div className="erp-reveal flex flex-col md:flex-row gap-8 pt-8 pb-6 w-full h-[calc(100vh-100px)]">
                 
                 {/* Left: Upload (Reduced width) */}
-                <div className="flex flex-col gap-3 w-full md:w-[40%] h-full shrink-0">
+                <div className="flex flex-col gap-4 w-full md:w-[40%] h-full shrink-0">
                   <div>
-                    <h2 className="text-xl font-bold text-white mb-0.5">Upload Scan</h2>
-                    <p className="text-xs text-slate-400">Provide an image of the plant.</p>
+                    <h2 className="text-xl font-bold text-white mb-1 tracking-tight">Upload Scan</h2>
+                    <p className="text-xs text-slate-400 leading-relaxed">Provide an image of the plant.</p>
                   </div>
                   
-                  <Card className="border-white/5 bg-white/[0.02] shadow-2xl backdrop-blur-xl overflow-hidden rounded-xl flex-1 flex flex-col">
+                  <Card className="erp-glass-opaque erp-section-panel erp-squircle border-white/5 overflow-hidden flex-1 flex flex-col">
                     <CardContent className="flex flex-col gap-3 p-4 flex-1 justify-center relative">
                       {pendingFile && previewUrl ? (
                          <div className="flex-1 relative rounded-lg border border-white/10 overflow-hidden bg-black/50 group">
@@ -515,13 +521,13 @@ export function PlantDashboard() {
                 </div>
 
                 {/* Right: Inline Info Form */}
-                <div className="flex flex-col gap-3 w-full md:w-[60%] h-full">
+                <div className="erp-reveal erp-reveal-delay-1 flex flex-col gap-4 w-full md:w-[60%] h-full">
                   <div>
-                    <h2 className="text-xl font-bold text-white mb-0.5">Scan Details</h2>
-                    <p className="text-xs text-slate-400">Fill info to begin analysis.</p>
+                    <h2 className="text-xl font-bold text-white mb-1 tracking-tight">Scan Details</h2>
+                    <p className="text-xs text-slate-400 leading-relaxed">Fill info to begin analysis.</p>
                   </div>
                   
-                  <Card className="border-white/5 bg-white/[0.02] shadow-2xl backdrop-blur-xl overflow-hidden rounded-xl flex-1 flex flex-col">
+                  <Card className="erp-glass-opaque erp-section-panel erp-squircle border-white/5 overflow-hidden flex-1 flex flex-col">
                     <CardContent className="flex flex-col justify-center gap-6 p-6 flex-1">
                       
                       {/* Tabs */}
@@ -544,7 +550,7 @@ export function PlantDashboard() {
                         </button>
                       </div>
 
-                      <div className="flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-2">
+                      <div className="erp-nested-scroll flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-2 max-h-[42vh]">
                         {modalTab === "new" ? (
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -632,7 +638,7 @@ export function PlantDashboard() {
                         type="button"
                         onClick={handleInlineConfirm}
                         disabled={!isFormValid || !pendingFile || loading}
-                        className="w-full bg-primary hover:bg-primary/90 text-white py-5 text-sm font-bold rounded-lg shadow-lg shrink-0 transition-transform active:scale-[0.98]"
+                        className="erp-interactive erp-squircle w-full bg-primary hover:bg-primary/90 text-white py-5 text-sm font-bold shadow-lg shrink-0"
                       >
                         {loading ? "Processing..." : <><ScanSearch className="size-4 mr-2" /> Analyze Image</>}
                       </Button>
@@ -648,22 +654,22 @@ export function PlantDashboard() {
                 <Button 
                   variant="ghost" 
                   onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="text-slate-400 hover:text-primary animate-pulse"
+                  className="erp-scroll-cue text-slate-400 hover:text-primary"
                 >
                    <ChevronDown className="mr-2 size-5" /> Monitor Plant History
                 </Button>
               </div>
 
               {/* BOTTOM SECTION: History */}
-              <div id="history-section" className="pt-8 border-t border-white/10 min-h-screen">
-                <div className="flex items-center justify-between mb-6">
+              <div id="history-section" className="erp-reveal erp-reveal-delay-2 pt-10 border-t border-white/10 min-h-screen">
+                <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">Plant History</h2>
-                    <p className="text-sm text-slate-400">Compare and analyze scans over time.</p>
+                    <h2 className="text-2xl font-bold text-white mb-1.5 tracking-tight">Plant History</h2>
+                    <p className="text-sm text-slate-400 leading-relaxed">Compare and analyze scans over time.</p>
                   </div>
                 </div>
                 
-                <Card className="flex flex-col border-white/5 bg-white/[0.02] shadow-2xl backdrop-blur-xl rounded-xl overflow-hidden">
+                <Card className="erp-glass-opaque erp-section-panel erp-squircle flex flex-col border-white/5 overflow-hidden">
                   <CardContent className="p-6">
                      <div className="grid lg:grid-cols-[300px_1fr] gap-8">
                        
@@ -853,9 +859,24 @@ export function PlantDashboard() {
             </div>
           )}
 
-          {/* RESULTS VIEW */}
+          {/* RESULTS VIEW — skeleton while loading */}
+          {viewState === "results" && loading && !result && (
+            <div className="pt-8 space-y-8 min-h-screen">
+              <Skeleton className="h-8 w-64 max-w-full" />
+              <div className="flex flex-col gap-8 lg:flex-row">
+                <Skeleton className="h-[min(70vh,520px)] flex-1" />
+                <div className="w-full lg:w-[350px] shrink-0 space-y-4">
+                  <Skeleton className="h-10 w-40" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              </div>
+            </div>
+          )}
+
           {viewState === "results" && result && (
-            <div className="pt-6 animate-in fade-in duration-500 min-h-screen">
+            <div className="erp-reveal pt-8 animate-in fade-in duration-500 min-h-screen">
                {error && (
                   <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm font-medium text-red-400 shadow-sm">
                     {error}
@@ -874,7 +895,7 @@ export function PlantDashboard() {
                {detectionMode === "summary" ? (
                   /* Summary View */
                   <div className="flex flex-col gap-6 lg:flex-row min-h-[calc(100vh-160px)]">
-                    <Card className="flex-1 flex flex-col border-white/10 bg-slate-900/40 overflow-hidden shadow-2xl rounded-xl">
+                    <Card className="erp-detection-panel erp-squircle flex-1 flex flex-col border-white/10 overflow-hidden">
                       <div className="p-2 flex-1 flex items-center justify-center">
                          {compositeUrl ? (
                            <img src={compositeUrl} alt="Analyzed" className="max-w-full max-h-[88vh] object-contain rounded-lg border border-white/5 shadow-inner" />
@@ -884,31 +905,31 @@ export function PlantDashboard() {
                       </div>
                     </Card>
                     <div className="w-full lg:w-[350px] shrink-0">
-                      <Card className="border-white/10 bg-slate-900/40 backdrop-blur-md rounded-xl shadow-xl h-full flex flex-col">
-                        <CardHeader className="border-b border-white/10 pb-4 bg-black/20 shrink-0">
+                      <Card className="erp-detection-panel erp-squircle border-white/10 h-full flex flex-col">
+                        <CardHeader className="border-b border-white/10 pb-4 shrink-0">
                           <CardTitle className="text-lg font-bold text-white tracking-wide">Key Metrics</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6 flex-1">
-                           <dl className="space-y-4 text-sm">
+                           <div className="erp-bento-grid">
                               {models.canopy && (
-                                <div className="flex justify-between items-center rounded-lg bg-primary/10 px-4 py-4 border border-primary/20 shadow-sm">
-                                  <dt className="text-primary-100 font-semibold">Canopy Area</dt>
-                                  <dd className="font-mono font-bold text-white text-lg">{(result.canopyAreaM2 ?? result.canopyAreaCm2 / 10000).toFixed(4)} m²</dd>
+                                <div className="erp-bento-cell erp-bento-cell--wide flex justify-between items-center bg-primary/10 border-primary/20">
+                                  <span className="text-primary-100 font-semibold text-sm">Canopy Area</span>
+                                  <span className="font-mono font-bold text-white text-lg">{(result.canopyAreaM2 ?? result.canopyAreaCm2 / 10000).toFixed(4)} m²</span>
                                 </div>
                               )}
                               {models.fruit && (
-                                <div className="flex justify-between items-center rounded-lg bg-amber-500/10 px-4 py-4 border border-amber-500/20 shadow-sm">
-                                  <dt className="text-amber-100 font-semibold">Total Fruits</dt>
-                                  <dd className="font-mono font-bold text-white text-lg">{result.fruitDetections.length}</dd>
+                                <div className="erp-bento-cell flex flex-col gap-1 bg-amber-500/10 border-amber-500/20">
+                                  <span className="text-amber-100 font-semibold text-sm">Total Fruits</span>
+                                  <span className="font-mono font-bold text-white text-2xl">{result.fruitDetections.length}</span>
                                 </div>
                               )}
                               {models.leaf && (
-                                <div className="flex justify-between items-center rounded-lg bg-cyan-500/10 px-4 py-4 border border-cyan-500/20 shadow-sm">
-                                  <dt className="text-cyan-100 font-semibold">Total Leaves</dt>
-                                  <dd className="font-mono font-bold text-white text-lg">{result.leaf.detectionCount}</dd>
+                                <div className="erp-bento-cell flex flex-col gap-1 bg-cyan-500/10 border-cyan-500/20">
+                                  <span className="text-cyan-100 font-semibold text-sm">Total Leaves</span>
+                                  <span className="font-mono font-bold text-white text-2xl">{result.leaf.detectionCount}</span>
                                 </div>
                               )}
-                           </dl>
+                           </div>
                         </CardContent>
                       </Card>
                     </div>
@@ -919,16 +940,16 @@ export function PlantDashboard() {
                      
                      {/* Fruits Block */}
                      {models.fruit && result.fruitDetections.length > 0 && (
-                       <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
+                       <div className="erp-reveal min-h-[calc(100vh-140px)] flex flex-col gap-6">
                          <h3 className="text-xl font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-2"><Search className="size-5"/> Fruit Analysis</h3>
                          <div className="flex flex-col lg:flex-row gap-6 flex-1">
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2">
+                           <div className="erp-detection-panel flex-1 overflow-hidden flex items-center justify-center p-2">
                               {detailedImages.fruit ? (
                                 <img src={detailedImages.fruit} className="max-w-full max-h-[70vh] object-contain" />
                               ) : <div className="text-slate-500">Image processing...</div>}
                            </div>
                            <div className="w-full lg:w-[450px] shrink-0 flex flex-col">
-                             <Card className="border-amber-500/20 bg-slate-900/40 backdrop-blur-md rounded-xl flex-1 flex flex-col">
+                             <Card className="erp-detection-panel erp-squircle border-amber-500/20 flex-1 flex flex-col">
                                <CardHeader className="bg-amber-500/10 border-b border-amber-500/20 pb-4 shrink-0">
                                  <CardTitle className="text-amber-100 text-lg">Classification Table</CardTitle>
                                </CardHeader>
@@ -963,16 +984,16 @@ export function PlantDashboard() {
 
                      {/* Leaves Block */}
                      {models.leaf && result.leafDetections.length > 0 && (
-                       <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
+                       <div className="erp-reveal erp-reveal-delay-1 min-h-[calc(100vh-140px)] flex flex-col gap-6">
                          <h3 className="text-xl font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-2"><Search className="size-5"/> Leaf Analysis</h3>
                          <div className="flex flex-col lg:flex-row gap-6 flex-1">
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2">
+                           <div className="erp-detection-panel flex-1 overflow-hidden flex items-center justify-center p-2">
                               {detailedImages.leaf ? (
                                 <img src={detailedImages.leaf} className="max-w-full max-h-[70vh] object-contain" />
                               ) : <div className="text-slate-500">Image processing...</div>}
                            </div>
                            <div className="w-full lg:w-[450px] shrink-0 flex flex-col">
-                             <Card className="border-cyan-500/20 bg-slate-900/40 backdrop-blur-md rounded-xl flex-1 flex flex-col">
+                             <Card className="erp-detection-panel erp-squircle border-cyan-500/20 flex-1 flex flex-col">
                                <CardHeader className="bg-cyan-500/10 border-b border-cyan-500/20 pb-4 shrink-0">
                                  <CardTitle className="text-cyan-100 text-lg">Classification Table</CardTitle>
                                </CardHeader>
@@ -1007,16 +1028,16 @@ export function PlantDashboard() {
 
                      {/* Canopy Block */}
                      {models.canopy && (
-                       <div className="min-h-[calc(100vh-140px)] flex flex-col gap-6">
+                       <div className="erp-reveal erp-reveal-delay-2 min-h-[calc(100vh-140px)] flex flex-col gap-6">
                          <h3 className="text-xl font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-2"><Search className="size-5"/> Canopy Analysis</h3>
                          <div className="flex flex-col lg:flex-row gap-6 flex-1">
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2">
+                           <div className="erp-detection-panel flex-1 overflow-hidden flex items-center justify-center p-2">
                               {detailedImages.canopy ? (
                                 <img src={detailedImages.canopy} className="max-w-full max-h-[70vh] object-contain" />
                               ) : <div className="text-slate-500">Image processing...</div>}
                            </div>
                            <div className="w-full lg:w-[400px] shrink-0">
-                             <Card className="border-emerald-500/20 bg-slate-900/40 backdrop-blur-md rounded-xl h-full">
+                             <Card className="erp-detection-panel erp-squircle border-emerald-500/20 h-full">
                                <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20 pb-4">
                                  <CardTitle className="text-emerald-100 text-lg">Metrics Table</CardTitle>
                                </CardHeader>
